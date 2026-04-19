@@ -27,6 +27,7 @@ model Order {
   siteAddress       String
   scheduledDateTime DateTime
   dispatchType      DispatchType
+  vendorName        String?
   status            OrderStatus  @default(PENDING_APPROVAL)
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
