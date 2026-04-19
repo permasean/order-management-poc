@@ -1,15 +1,30 @@
-import { logger, schedules, wait } from "@trigger.dev/sdk/v3";
-import { getUnprocessedEvents } from "../helpers/outbox";
+import { logger, schedules } from "@trigger.dev/sdk/v3";
+import { getUnprocessedEvents, markEventProcessed } from "../helpers/outbox.js";
+import { vendorIntegration } from "./vendor-integration.js";
 
-export const firstScheduledTask = schedules.task({
-  id: "approve-scheduled-task",
-  // Every hour
-  cron: "0 * * * *",
-  // Set an optional maxDuration to prevent tasks from running indefinitely
-  maxDuration: 900, // Stop executing after 900 secs (15 mins) of compute
-  run: async (payload, { ctx }) => {
-    // The payload contains the last run timestamp that you can use to check if this is the first run
-    // And calculate the time since the last run
-    const outboxEvents = getUnprocessedEvents("order.approved");
-  },
+export const outboxProcessor = schedules.task({
+	id: "outbox-processor",
+	cron: "*/30 * * * * *",
+	maxDuration: 60,
+	queue: { concurrencyLimit: 1 },
+	run: async () => {
+		const events = await getUnprocessedEvents("order.approved");
+
+		if (events.length === 0) {
+			return;
+		}
+
+		logger.info(`Processing ${events.length} outbox events`);
+
+		for (const event of events) {
+			try {
+				const payload = event.payload as { orderId: string };
+				await vendorIntegration.trigger(payload);
+				await markEventProcessed(event.id);
+				logger.info(`Processed event ${event.id}`);
+			} catch (err) {
+				logger.error(`Failed to process event ${event.id}`, { err });
+			}
+		}
+	},
 });

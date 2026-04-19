@@ -6,3 +6,10 @@ export async function getUnprocessedEvents(eventType: string) {
 		orderBy: { createdAt: "asc" },
 	});
 }
+
+export async function markEventProcessed(id: string) {
+	return prisma.outboxEvent.update({
+		where: { id },
+		data: { processed: true },
+	});
+}
