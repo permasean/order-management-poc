@@ -24,20 +24,31 @@ export async function approveOrder(req: Request, res: Response) {
     return;
   }
 
+  if (order.status === OrderStatus.REQUEST_SENT && order.vendorName === vendorName) {
+    res.status(200).json({ orderId: order.id, status: order.status });
+    return;
+  }
+
   if (order.status !== OrderStatus.PENDING_APPROVAL) {
     res.status(409).json({ error: "Order is not in Pending Approval status" });
     return;
   }
 
-  const updated = await prisma.order.update({
-    where: { id: orderId },
-    data: {
-      status: OrderStatus.REQUEST_SENT,
-      vendorName,
-    },
-  });
-
-  // TODO: trigger vendor integration task via Trigger.dev SDK
+  const [updated] = await prisma.$transaction([
+    prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: OrderStatus.REQUEST_SENT,
+        vendorName,
+      },
+    }),
+    prisma.outboxEvent.create({
+      data: {
+        eventType: "order.approved",
+        payload: { orderId },
+      },
+    }),
+  ]);
 
   res.status(200).json({ orderId: updated.id, status: updated.status });
 }

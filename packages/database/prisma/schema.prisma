@@ -34,3 +34,13 @@ model Order {
 
   @@map("orders")
 }
+
+model OutboxEvent {
+  id        String   @id @default(uuid())
+  eventType String
+  payload   Json
+  processed Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("outbox_events")
+}
