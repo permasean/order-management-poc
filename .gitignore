@@ -40,3 +40,4 @@ yarn-error.log*
 # LLM artifacts
 .claude
 CLAUDE.md
+/plans

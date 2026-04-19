@@ -1,13 +1,7 @@
-import express from "express";
+import "dotenv/config";
+import app from "./app.js";
 
-const app = express();
-const port = 3002;
-
-app.use(express.json());
-
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok" });
-});
+const port = process.env.PORT ?? 3002;
 
 app.listen(port, () => {
   console.log(`Order Ingestion API running on http://localhost:${port}`);
