@@ -197,6 +197,106 @@
           "path": ["orders"]
         }
       }
+    },
+    {
+      "name": "Approve Order - Valid",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{bearerToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"orderId\": \"REPLACE_WITH_ORDER_ID\",\n  \"vendorName\": \"Acme Field Services\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/webhooks/approval",
+          "host": ["{{baseUrl}}"],
+          "path": ["webhooks", "approval"]
+        }
+      }
+    },
+    {
+      "name": "Approve Order - Missing Fields (400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{bearerToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/webhooks/approval",
+          "host": ["{{baseUrl}}"],
+          "path": ["webhooks", "approval"]
+        }
+      }
+    },
+    {
+      "name": "Approve Order - Not Found (404)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{bearerToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"orderId\": \"00000000-0000-0000-0000-000000000000\",\n  \"vendorName\": \"Acme Field Services\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/webhooks/approval",
+          "host": ["{{baseUrl}}"],
+          "path": ["webhooks", "approval"]
+        }
+      }
+    },
+    {
+      "name": "Approve Order - Already Approved (409)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{bearerToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"orderId\": \"REPLACE_WITH_ALREADY_APPROVED_ORDER_ID\",\n  \"vendorName\": \"Acme Field Services\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/webhooks/approval",
+          "host": ["{{baseUrl}}"],
+          "path": ["webhooks", "approval"]
+        }
+      }
     }
   ]
 }
