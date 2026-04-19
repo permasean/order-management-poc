@@ -1,0 +1,22 @@
+{
+  "name": "@repo/database",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "prisma": "^6.7.0",
+    "typescript": "5.9.2"
+  }
+}
