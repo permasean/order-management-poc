@@ -36,3 +36,7 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+# LLM artifacts
+.claude
+CLAUDE.md
