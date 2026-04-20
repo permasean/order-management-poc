@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "lint": "eslint --max-warnings 0",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@repo/database": "workspace:*",
@@ -22,6 +23,7 @@
     "@types/express": "^5.0.2",
     "@types/node": "^22.15.3",
     "tsx": "^4.19.4",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "vitest": "^4.1.4"
   }
 }
