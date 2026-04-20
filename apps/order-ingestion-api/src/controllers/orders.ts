@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { prisma, DispatchType } from "@repo/database";
+import { tasks } from "@trigger.dev/sdk/v3";
 import { createOrderSchema } from "../validation/orderSchema.js";
 
 const DISPATCH_TYPE_MAP: Record<string, DispatchType> = {
@@ -29,6 +30,11 @@ export async function createOrder(req: Request, res: Response) {
       scheduledDateTime: new Date(scheduledDateTime),
       dispatchType: DISPATCH_TYPE_MAP[dispatchType]!,
     },
+  });
+
+  await tasks.trigger("order-lifecycle", { orderId: order.id }, {
+    idempotencyKey: `order-lifecycle:${order.id}`,
+    idempotencyKeyTTL: "24h",
   });
 
   res.status(201).json({ orderId: order.id });
