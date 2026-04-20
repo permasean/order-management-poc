@@ -16,7 +16,7 @@ export const orderLifecycle = task({
 
 		const token = await wait.createToken({
 			idempotencyKey: `approval:${orderId}`,
-			timeout: "24h",
+			timeout: "24h", // should be indefinite or definite? if definite, what is a good timeout range?
 			tags: [`order:${orderId}`],
 		});
 
@@ -42,7 +42,7 @@ export const orderLifecycle = task({
 
 		const response = await retry.fetch(`${VENDOR_API_URL}/dispatch`, {
 			method: "POST",
-			headers: { "Content-Type": "application/json" },
+			headers: { "Content-Type": "application/json" }, // insert bearer token here if auth required
 			body: JSON.stringify({
 				orderId,
 				dispatchType: order.dispatchType,
@@ -108,6 +108,8 @@ export const orderLifecycle = task({
 	onFailure: async ({ payload, error }) => {
 		logger.error(`Workflow failed for order ${payload.orderId}`, { error });
 
+		// any failures marks the order status as FAILED - this is probably a behavior we don't want.
+		// need to expand on what happens here.
 		await prisma.order.update({
 			where: { id: payload.orderId },
 			data: { status: OrderStatus.FAILED },
