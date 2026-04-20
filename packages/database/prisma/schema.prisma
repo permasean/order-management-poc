@@ -19,6 +19,7 @@ enum OrderStatus {
   CONFIRMED
   COMPLETED
   CANCELED
+  FAILED
 }
 
 model Order {
@@ -29,19 +30,12 @@ model Order {
   dispatchType      DispatchType
   vendorName        String?
   vendorOrderNumber String?
+  techFirstName     String?
+  techLastName      String?
+  techMobilePhone   String?
   status            OrderStatus  @default(PENDING_APPROVAL)
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
   @@map("orders")
-}
-
-model OutboxEvent {
-  id        String   @id @default(uuid())
-  eventType String
-  payload   Json
-  processed Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  @@map("outbox_events")
 }
