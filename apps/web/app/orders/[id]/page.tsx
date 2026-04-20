@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
 import { CloseoutForm } from "@/components/closeout-form";
 import { CancelButton } from "@/components/cancel-button";
+import { ReviewForm } from "@/components/review-form";
 import { formatDateTime, formatStatus, isTerminalStatus } from "@/lib/order-utils";
 
 export default async function OrderDetailPage({
@@ -132,7 +133,14 @@ export default async function OrderDetailPage({
 				</CardContent>
 			</Card>
 
-			{order.status === "CONFIRMED" && (
+			{order.status === "MANUAL_REVIEW" && (
+			<>
+				<Separator />
+				<ReviewForm orderId={order.id} />
+			</>
+		)}
+
+		{order.status === "CONFIRMED" && (
 				<>
 					<Separator />
 					<CloseoutForm orderId={order.id} />

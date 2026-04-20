@@ -32,9 +32,9 @@ export function StatusFilter() {
 			}}
 		>
 			<SelectTrigger className="w-[200px]">
-				<SelectValue placeholder="Filter by status" />
+				{current === "ALL" ? "All Statuses" : formatStatus(current)}
 			</SelectTrigger>
-			<SelectContent>
+			<SelectContent alignItemWithTrigger={false}>
 				<SelectItem value="ALL">All Statuses</SelectItem>
 				{statuses.map((status) => (
 					<SelectItem key={status} value={status}>

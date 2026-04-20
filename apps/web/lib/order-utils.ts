@@ -7,6 +7,7 @@ export const statusColorMap: Record<OrderStatus, string> = {
 	COMPLETED: "bg-green-100 text-green-800",
 	CANCELED: "bg-gray-100 text-gray-800",
 	FAILED: "bg-red-100 text-red-800",
+	MANUAL_REVIEW: "bg-purple-100 text-purple-800",
 };
 
 export function formatStatus(status: string): string {

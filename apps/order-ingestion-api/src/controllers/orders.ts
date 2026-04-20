@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { prisma, DispatchType } from "@repo/database";
+import { prisma, DispatchType, OrderStatus } from "@repo/database";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { createOrderSchema } from "../validation/orderSchema.js";
 
@@ -23,13 +23,25 @@ export async function createOrder(req: Request, res: Response) {
   const { ticketId, siteAddress, scheduledDateTime, dispatchType } =
     result.data;
 
-  const order = await prisma.order.create({
-    data: {
-      ticketId,
-      siteAddress,
-      scheduledDateTime: new Date(scheduledDateTime),
-      dispatchType: DISPATCH_TYPE_MAP[dispatchType]!,
-    },
+  const order = await prisma.$transaction(async (tx) => {
+    const created = await tx.order.create({
+      data: {
+        ticketId,
+        siteAddress,
+        scheduledDateTime: new Date(scheduledDateTime),
+        dispatchType: DISPATCH_TYPE_MAP[dispatchType]!,
+      },
+    });
+
+    await tx.statusHistory.create({
+      data: {
+        orderId: created.id,
+        fromStatus: null,
+        toStatus: OrderStatus.PENDING_APPROVAL,
+      },
+    });
+
+    return created;
   });
 
   await tasks.trigger("order-lifecycle", { orderId: order.id }, {

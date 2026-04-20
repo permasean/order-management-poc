@@ -1,34 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma, OrderStatus } from "@repo/database";
+import { redirect } from "next/navigation";
+import { OrderStatus, transitionOrder } from "@repo/database";
 
 export async function closeoutOrder(orderId: string, closeoutNotes: string) {
-	await prisma.$transaction(async (tx) => {
-		const order = await tx.order.findUniqueOrThrow({
-			where: { id: orderId },
-		});
-
-		if (order.status !== OrderStatus.CONFIRMED) {
-			throw new Error("Order must be in CONFIRMED status to close out");
-		}
-
-		await tx.statusHistory.create({
-			data: {
-				orderId,
-				fromStatus: order.status,
-				toStatus: OrderStatus.COMPLETED,
-			},
-		});
-
-		await tx.order.update({
-			where: { id: orderId },
-			data: {
-				status: OrderStatus.COMPLETED,
-				closeoutNotes,
-				completedAt: new Date(),
-			},
-		});
+	await transitionOrder(orderId, OrderStatus.COMPLETED, {
+		data: {
+			closeoutNotes,
+			completedAt: new Date(),
+		},
+		metadata: { triggeredBy: "ui", action: "closeout" },
 	});
 
 	revalidatePath(`/orders/${orderId}`);
@@ -36,30 +18,34 @@ export async function closeoutOrder(orderId: string, closeoutNotes: string) {
 }
 
 export async function cancelOrder(orderId: string) {
-	await prisma.$transaction(async (tx) => {
-		const order = await tx.order.findUniqueOrThrow({
-			where: { id: orderId },
-		});
-
-		const terminalStatuses: string[] = [OrderStatus.COMPLETED, OrderStatus.CANCELED, OrderStatus.FAILED];
-		if (terminalStatuses.includes(order.status)) {
-			throw new Error("Cannot cancel an order in a terminal status");
-		}
-
-		await tx.statusHistory.create({
-			data: {
-				orderId,
-				fromStatus: order.status,
-				toStatus: OrderStatus.CANCELED,
-			},
-		});
-
-		await tx.order.update({
-			where: { id: orderId },
-			data: { status: OrderStatus.CANCELED },
-		});
+	await transitionOrder(orderId, OrderStatus.CANCELED, {
+		metadata: { triggeredBy: "ui", action: "cancel" },
 	});
 
 	revalidatePath(`/orders/${orderId}`);
 	revalidatePath("/");
+}
+
+const MANAGEMENT_API_URL = process.env.MANAGEMENT_API_URL ?? "http://localhost:3004";
+
+export async function reviewOrder(
+	orderId: string,
+	decision: { action: "retry" | "reassign" | "cancel"; newVendor?: string },
+): Promise<{ error?: string }> {
+	const response = await fetch(`${MANAGEMENT_API_URL}/orders/${orderId}/review`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(decision),
+	});
+
+	if (!response.ok) {
+		const data = await response.json();
+		revalidatePath(`/orders/${orderId}`);
+		revalidatePath("/");
+		return { error: data.error ?? "Failed to submit review decision" };
+	}
+
+	revalidatePath(`/orders/${orderId}`);
+	revalidatePath("/");
+	return {};
 }
