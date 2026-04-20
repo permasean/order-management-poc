@@ -20,6 +20,7 @@ enum OrderStatus {
   COMPLETED
   CANCELED
   FAILED
+  MANUAL_REVIEW
 }
 
 model Order {
@@ -33,9 +34,10 @@ model Order {
   techFirstName     String?
   techLastName      String?
   techMobilePhone   String?
-  closeoutNotes     String?
-  completedAt       DateTime?
-  status            OrderStatus     @default(PENDING_APPROVAL)
+  closeoutNotes          String?
+  completedAt            DateTime?
+  manualReviewAttempts   Int             @default(0)
+  status                 OrderStatus     @default(PENDING_APPROVAL)
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
   statusHistory     StatusHistory[]
@@ -49,6 +51,7 @@ model StatusHistory {
   order      Order        @relation(fields: [orderId], references: [id])
   fromStatus OrderStatus?
   toStatus   OrderStatus
+  metadata   Json?
   changedAt  DateTime     @default(now())
 
   @@map("status_history")
