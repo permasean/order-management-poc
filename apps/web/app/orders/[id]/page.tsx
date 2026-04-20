@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { CloseoutForm } from "@/components/closeout-form";
 import { CancelButton } from "@/components/cancel-button";
 import { ReviewForm } from "@/components/review-form";
-import { formatDateTime, formatStatus, isTerminalStatus } from "@/lib/order-utils";
+import { formatDateTime, formatError, formatStatus, isTerminalStatus } from "@/lib/order-utils";
 
 export default async function OrderDetailPage({
 	params,
@@ -35,10 +35,14 @@ export default async function OrderDetailPage({
 				<h1 className="text-2xl font-bold">Order Details</h1>
 			</div>
 
+			{order.status === "MANUAL_REVIEW" && (
+				<ReviewForm orderId={order.id} />
+			)}
+
 			<Card>
 				<CardHeader>
 					<div className="flex items-center justify-between">
-						<CardTitle>Order {order.id.slice(0, 8)}...</CardTitle>
+						<CardTitle>Order — {order.ticketId}</CardTitle>
 						<StatusBadge status={order.status} />
 					</div>
 				</CardHeader>
@@ -116,29 +120,56 @@ export default async function OrderDetailPage({
 					{order.statusHistory.length === 0 ? (
 						<p className="text-muted-foreground text-sm">No status transitions recorded yet.</p>
 					) : (
-						<div className="space-y-3">
-							{order.statusHistory.map((entry) => (
-								<div key={entry.id} className="flex items-center gap-3 text-sm">
-									<span className="text-muted-foreground w-40 shrink-0">
-										{formatDateTime(entry.changedAt)}
-									</span>
-									<span>
-										{entry.fromStatus ? formatStatus(entry.fromStatus) : "Created"}{" → "}
-										{formatStatus(entry.toStatus)}
-									</span>
-								</div>
-							))}
+						<div className="space-y-4">
+							{order.statusHistory.map((entry) => {
+								const meta = entry.metadata as Record<string, unknown> | null;
+								return (
+									<div key={entry.id} className="border-b pb-3 last:border-0 last:pb-0">
+										<div className="flex items-center gap-3 text-sm">
+											<span className="text-muted-foreground w-40 shrink-0">
+												{formatDateTime(entry.changedAt)}
+											</span>
+											<span className="font-medium">
+												{entry.fromStatus ? formatStatus(entry.fromStatus) : "Created"}{" → "}
+												{formatStatus(entry.toStatus)}
+											</span>
+										</div>
+										{meta && Object.keys(meta).length > 0 && (
+											<div className="ml-[calc(10rem+0.75rem)] mt-1 flex flex-wrap gap-2">
+												{meta.triggeredBy && (
+													<span className="inline-flex items-center rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+														{String(meta.triggeredBy)}
+													</span>
+												)}
+												{meta.step && (
+													<span className="inline-flex items-center rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
+														{String(meta.step)}
+													</span>
+												)}
+												{meta.vendorOrderNumber && (
+													<span className="inline-flex items-center rounded bg-green-50 px-2 py-0.5 text-xs text-green-600">
+														VON: {String(meta.vendorOrderNumber)}
+													</span>
+												)}
+												{meta.reviewAttempt && (
+													<span className="inline-flex items-center rounded bg-purple-50 px-2 py-0.5 text-xs text-purple-600">
+														Review attempt: {String(meta.reviewAttempt)}
+													</span>
+												)}
+												{meta.error && (
+													<span className="inline-flex items-center rounded bg-red-50 px-2 py-0.5 text-xs text-red-600 max-w-md truncate">
+														{formatError(String(meta.error))}
+													</span>
+												)}
+											</div>
+										)}
+									</div>
+								);
+							})}
 						</div>
 					)}
 				</CardContent>
 			</Card>
-
-			{order.status === "MANUAL_REVIEW" && (
-			<>
-				<Separator />
-				<ReviewForm orderId={order.id} />
-			</>
-		)}
 
 		{order.status === "CONFIRMED" && (
 				<>
