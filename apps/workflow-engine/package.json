@@ -8,6 +8,7 @@
     "deploy": "npx trigger.dev@latest deploy"
   },
   "dependencies": {
+    "@repo/config": "workspace:^",
     "@repo/database": "workspace:*",
     "@trigger.dev/sdk": "4.4.4"
   },

@@ -10,6 +10,7 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
+		"@repo/config": "workspace:^",
 		"@repo/database": "workspace:*",
 		"@trigger.dev/sdk": "^4.4.4",
 		"dotenv": "^16.5.0",

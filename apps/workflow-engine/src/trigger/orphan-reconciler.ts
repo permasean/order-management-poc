@@ -1,7 +1,6 @@
 import { schedules, logger, tasks } from "@trigger.dev/sdk/v3";
 import { prisma, OrderStatus } from "@repo/database";
-
-const STALE_THRESHOLD_MINUTES = 5;
+import { WORKFLOW_CONFIG } from "@repo/config";
 
 export const orphanReconciler = schedules.task({
 	id: "orphan-reconciler",
@@ -27,8 +26,8 @@ export const orphanReconciler = schedules.task({
 		for (const order of orphanedOrders) {
 			try {
 				await tasks.trigger("order-lifecycle", { orderId: order.id }, {
-					idempotencyKey: `order-lifecycle:${order.id}`,
-					idempotencyKeyTTL: "24h",
+					idempotencyKey: WORKFLOW_CONFIG.lifecycle.idempotencyKey(order.id),
+					idempotencyKeyTTL: WORKFLOW_CONFIG.lifecycle.idempotencyKeyTTL,
 				});
 				logger.info(`Re-triggered workflow for order ${order.id}`);
 			} catch (err) {

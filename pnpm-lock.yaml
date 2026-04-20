@@ -82,6 +82,9 @@ importers:
 
   apps/order-ingestion-api:
     dependencies:
+      '@repo/config':
+        specifier: workspace:^
+        version: link:../../packages/config
       '@repo/database':
         specifier: workspace:*
         version: link:../../packages/database
@@ -119,6 +122,9 @@ importers:
 
   apps/order-management-api:
     dependencies:
+      '@repo/config':
+        specifier: workspace:^
+        version: link:../../packages/config
       '@repo/database':
         specifier: workspace:*
         version: link:../../packages/database
@@ -238,6 +244,9 @@ importers:
 
   apps/workflow-engine:
     dependencies:
+      '@repo/config':
+        specifier: workspace:^
+        version: link:../../packages/config
       '@repo/database':
         specifier: workspace:*
         version: link:../../packages/database
@@ -251,6 +260,8 @@ importers:
       typescript:
         specifier: 5.9.2
         version: 5.9.2
+
+  packages/config: {}
 
   packages/database:
     dependencies:

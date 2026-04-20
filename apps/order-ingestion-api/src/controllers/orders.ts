@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { prisma, DispatchType, OrderStatus } from "@repo/database";
+import { WORKFLOW_CONFIG } from "@repo/config";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { createOrderSchema } from "../validation/orderSchema.js";
 
@@ -45,8 +46,8 @@ export async function createOrder(req: Request, res: Response) {
   });
 
   await tasks.trigger("order-lifecycle", { orderId: order.id }, {
-    idempotencyKey: `order-lifecycle:${order.id}`,
-    idempotencyKeyTTL: "24h",
+    idempotencyKey: WORKFLOW_CONFIG.lifecycle.idempotencyKey(order.id),
+    idempotencyKeyTTL: WORKFLOW_CONFIG.lifecycle.idempotencyKeyTTL,
   });
 
   res.status(201).json({ orderId: order.id });

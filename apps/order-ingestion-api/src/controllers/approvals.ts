@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { prisma, OrderStatus } from "@repo/database";
+import { WORKFLOW_CONFIG } from "@repo/config";
 import { wait } from "@trigger.dev/sdk/v3";
 import { approvalSchema } from "../validation/approvalSchema.js";
 
@@ -36,7 +37,7 @@ export async function approveOrder(req: Request, res: Response) {
 	}
 
 	const token = await wait.createToken({
-		idempotencyKey: `approval:${orderId}`,
+		idempotencyKey: WORKFLOW_CONFIG.approval.tokenKey(orderId),
 	});
 
 	await wait.completeToken(token.id, { vendorName });

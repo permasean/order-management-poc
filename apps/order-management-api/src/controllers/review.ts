@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { prisma, OrderStatus } from "@repo/database";
+import { WORKFLOW_CONFIG } from "@repo/config";
 import { wait } from "@trigger.dev/sdk/v3";
 import { reviewSchema } from "../validation/reviewSchema.js";
 import { AppError } from "../middleware/errorHandler.js";
@@ -23,7 +24,7 @@ export async function submitReviewDecision(req: Request, res: Response) {
 
 	try {
 		const token = await wait.createToken({
-			idempotencyKey: `manual-review:${id}:${order.manualReviewAttempts}`,
+			idempotencyKey: WORKFLOW_CONFIG.manualReview.tokenKey(id, order.manualReviewAttempts),
 		});
 		await wait.completeToken(token.id, result.data);
 	} catch (error) {

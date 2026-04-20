@@ -114,6 +114,7 @@ The following were added beyond the original requirements:
 | Package | Description |
 |---------|-------------|
 | `@repo/database` | Prisma schema, client, and shared transition logic |
+| `@repo/config` | Centralized workflow configuration — token keys, timeouts, retry counts, poll intervals. Single source of truth across all apps |
 
 ## Quick Start
 

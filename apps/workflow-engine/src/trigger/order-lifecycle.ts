@@ -1,10 +1,8 @@
 import { task, wait, logger } from "@trigger.dev/sdk/v3";
 import { prisma, OrderStatus, transitionOrder } from "@repo/database";
+import { WORKFLOW_CONFIG } from "@repo/config";
 
 const VENDOR_API_URL = process.env.VENDOR_API_URL ?? "http://localhost:3003";
-const MAX_POLLS = 3;
-const POLL_INTERVAL_SECONDS = 30;
-const MAX_REVIEW_ATTEMPTS = 3;
 
 async function checkCanceled(orderId: string): Promise<boolean> {
 	const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
@@ -14,7 +12,7 @@ async function checkCanceled(orderId: string): Promise<boolean> {
 async function callVendorApi(orderId: string, order: { dispatchType: string; siteAddress: string }) {
 	let lastError: Error | null = null;
 
-	for (let attempt = 1; attempt <= 3; attempt++) {
+	for (let attempt = 1; attempt <= WORKFLOW_CONFIG.vendorApi.maxRetries; attempt++) {
 		try {
 			const response = await fetch(`${VENDOR_API_URL}/dispatch`, {
 				method: "POST",
@@ -36,8 +34,8 @@ async function callVendorApi(orderId: string, order: { dispatchType: string; sit
 			lastError = new Error(`VENDOR_API_FAILED: ${String(error)}`);
 		}
 
-		logger.warn(`Vendor API attempt ${attempt}/3 failed for order ${orderId}`);
-		if (attempt < 3) await wait.for({ seconds: attempt * 2 });
+		logger.warn(`Vendor API attempt ${attempt}/${WORKFLOW_CONFIG.vendorApi.maxRetries} failed for order ${orderId}`);
+		if (attempt < WORKFLOW_CONFIG.vendorApi.maxRetries) await wait.for({ seconds: attempt * WORKFLOW_CONFIG.vendorApi.backoffBaseSeconds });
 	}
 
 	throw lastError;
@@ -46,8 +44,8 @@ async function callVendorApi(orderId: string, order: { dispatchType: string; sit
 async function pollForTechAssignment(orderId: string, vendorOrderNumber: string) {
 	let polls = 0;
 
-	while (polls < MAX_POLLS) {
-		await wait.for({ seconds: POLL_INTERVAL_SECONDS });
+	while (polls < WORKFLOW_CONFIG.techPolling.maxPolls) {
+		await wait.for({ seconds: WORKFLOW_CONFIG.techPolling.intervalSeconds });
 
 		if (await checkCanceled(orderId)) {
 			logger.info(`Order ${orderId} was canceled, stopping polling`);
@@ -72,16 +70,16 @@ async function pollForTechAssignment(orderId: string, vendorOrderNumber: string)
 		}
 
 		polls++;
-		logger.info(`Poll ${polls}/${MAX_POLLS} for order ${orderId}: tech not yet assigned`);
+		logger.info(`Poll ${polls}/${WORKFLOW_CONFIG.techPolling.maxPolls} for order ${orderId}: tech not yet assigned`);
 	}
 
-	throw new Error(`POLLING_EXCEEDED: Tech assignment polling exceeded ${MAX_POLLS} attempts for order ${orderId}`);
+	throw new Error(`POLLING_EXCEEDED: Tech assignment polling exceeded ${WORKFLOW_CONFIG.techPolling.maxPolls} attempts for order ${orderId}`);
 }
 
 export const orderLifecycle = task({
 	id: "order-lifecycle",
-	maxDuration: 86400,
-	queue: { concurrencyLimit: 10 },
+	maxDuration: WORKFLOW_CONFIG.lifecycle.maxDuration,
+	queue: { concurrencyLimit: WORKFLOW_CONFIG.lifecycle.concurrencyLimit },
 	retry: { maxAttempts: 1 },
 	run: async (payload: { orderId: string }) => {
 		const { orderId } = payload;
@@ -89,8 +87,8 @@ export const orderLifecycle = task({
 		logger.info(`Workflow started for order ${orderId}, waiting for approval`);
 
 		const token = await wait.createToken({
-			idempotencyKey: `approval:${orderId}`,
-			timeout: "10m",
+			idempotencyKey: WORKFLOW_CONFIG.approval.tokenKey(orderId),
+			timeout: WORKFLOW_CONFIG.approval.timeout,
 			tags: [`order:${orderId}`],
 		});
 
@@ -111,7 +109,7 @@ export const orderLifecycle = task({
 
 		let reviewAttempts = 0;
 
-		while (reviewAttempts < MAX_REVIEW_ATTEMPTS) {
+		while (reviewAttempts < WORKFLOW_CONFIG.manualReview.maxAttempts) {
 			try {
 				const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
 
@@ -158,7 +156,7 @@ export const orderLifecycle = task({
 					data: { manualReviewAttempts: { increment: 1 } },
 				});
 
-				logger.warn(`Order ${orderId} entering manual review (attempt ${updatedOrder.manualReviewAttempts}/${MAX_REVIEW_ATTEMPTS}): ${errorStr}`);
+				logger.warn(`Order ${orderId} entering manual review (attempt ${updatedOrder.manualReviewAttempts}/${WORKFLOW_CONFIG.manualReview.maxAttempts}): ${errorStr}`);
 
 				await transitionOrder(orderId, OrderStatus.MANUAL_REVIEW, {
 					metadata: {
@@ -170,8 +168,8 @@ export const orderLifecycle = task({
 				});
 
 				const reviewToken = await wait.createToken({
-					idempotencyKey: `manual-review:${orderId}:${updatedOrder.manualReviewAttempts}`,
-					timeout: "7d",
+					idempotencyKey: WORKFLOW_CONFIG.manualReview.tokenKey(orderId, updatedOrder.manualReviewAttempts),
+					timeout: WORKFLOW_CONFIG.manualReview.timeout,
 					tags: [`order:${orderId}`],
 				});
 
@@ -209,7 +207,7 @@ export const orderLifecycle = task({
 			}
 		}
 
-		throw new Error(`MAX_REVIEW_ATTEMPTS: Order ${orderId} exceeded ${MAX_REVIEW_ATTEMPTS} manual review attempts`);
+		throw new Error(`WORKFLOW_CONFIG.manualReview.maxAttempts: Order ${orderId} exceeded ${WORKFLOW_CONFIG.manualReview.maxAttempts} manual review attempts`);
 	},
 	onFailure: async ({ payload, error }) => {
 		logger.error(`Workflow failed for order ${payload.orderId}`, { error });
@@ -217,7 +215,7 @@ export const orderLifecycle = task({
 		const errorStr = String(error);
 		const userFacingError = errorStr.includes("APPROVAL_TIMEOUT")
 			? "Approval timed out"
-			: errorStr.includes("MAX_REVIEW_ATTEMPTS")
+			: errorStr.includes("WORKFLOW_CONFIG.manualReview.maxAttempts")
 				? "Maximum review attempts exceeded"
 				: errorStr.includes("REVIEW_TIMEOUT")
 					? "Manual review timed out"
