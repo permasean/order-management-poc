@@ -23,7 +23,7 @@ enum OrderStatus {
 }
 
 model Order {
-  id                String       @id @default(uuid())
+  id                String          @id @default(uuid())
   ticketId          String
   siteAddress       String
   scheduledDateTime DateTime
@@ -33,9 +33,23 @@ model Order {
   techFirstName     String?
   techLastName      String?
   techMobilePhone   String?
-  status            OrderStatus  @default(PENDING_APPROVAL)
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  closeoutNotes     String?
+  completedAt       DateTime?
+  status            OrderStatus     @default(PENDING_APPROVAL)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  statusHistory     StatusHistory[]
 
   @@map("orders")
+}
+
+model StatusHistory {
+  id         String       @id @default(uuid())
+  orderId    String
+  order      Order        @relation(fields: [orderId], references: [id])
+  fromStatus OrderStatus?
+  toStatus   OrderStatus
+  changedAt  DateTime     @default(now())
+
+  @@map("status_history")
 }
