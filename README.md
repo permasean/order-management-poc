@@ -1,159 +1,175 @@
-# Turborepo starter
+# Order Management POC
 
-This Turborepo starter is maintained by the Turborepo core team.
+A dispatch order management system built as a Turborepo monorepo. Demonstrates durable workflow orchestration using Trigger.dev, with human-in-the-loop (HITL) patterns, automatic retries, and long-running polling — all within a single resumable task.
 
-## Using this example
+## Architecture
 
-Run the following command:
-
-```sh
-npx create-turbo@latest
+```
+┌─────────────────┐     ┌──────────────────────┐     ┌─────────────────┐
+│  External System │────▶│  Order Ingestion API  │────▶│  Trigger.dev    │
+│                  │     │  (Express, port 3002) │     │  Workflow Engine │
+└─────────────────┘     └──────────────────────┘     └────────┬────────┘
+                                                              │
+┌─────────────────┐     ┌──────────────────────┐              │
+│  Web UI          │────▶│  Order Management API │──────────────┘
+│  (Next.js, 3000)│     │  (Express, port 3004) │   (completes wait tokens)
+└─────────────────┘     └──────────────────────┘
+                                                     ┌─────────────────┐
+                                                     │  Mock Vendor API │
+                                                     │  (Express, 3003)│
+                                                     └─────────────────┘
 ```
 
-## What's inside?
+### Wait Tokens (Trigger.dev)
 
-This Turborepo includes the following packages/apps:
+Trigger.dev's `wait.forToken()` pauses a workflow and checkpoints its state — freeing the worker entirely. Any external system can resume it by calling `wait.completeToken()` with data. This is a general-purpose mechanism for pausing workflows until an external event occurs, whether that's a human action, a webhook, or another service. The workflow resumes with the data passed to `completeToken()`.
 
-### Apps and Packages
+In this project, we use tokens for:
+- **Approval** — workflow pauses until the approval webhook completes the token with vendor info
+- **Manual review** — workflow pauses until an operator submits a decision via the management API
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+### Key Patterns
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+- **HITL (Human-in-the-Loop):** Approval and manual review use wait tokens to pause the workflow for human decisions.
+- **Retry with backoff:** Vendor API calls retry 3x with exponential backoff before entering manual review.
+- **Durable polling:** Tech assignment polling uses `wait.for()` to pause the workflow between polls — the worker is freed and state is saved. When the wait expires, a new worker resumes execution. This is not crash recovery — if the task fails during active execution, it does not resume from the last wait point.
+- **Centralized audit trail:** All status transitions go through `transitionOrder()` which atomically records history with metadata.
 
-### Utilities
+### Why Trigger.dev over cron jobs?
 
-This Turborepo has some additional tools already setup for you:
+Cron jobs are stateless — they have no memory of prior runs. This workflow spans hours or days (waiting for human approval, polling vendor APIs). Trigger.dev saves execution state at each `wait.*` call and frees the worker. When the wait condition is met, it restores state and resumes. This allows long-running workflows without holding resources, but note that if a task fails during active execution (between waits), it does not automatically resume — the `onFailure` handler transitions the order to an appropriate status.
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+## Apps
 
-### Build
+| App | Description | Port | Docs |
+|-----|-------------|------|------|
+| [order-ingestion-api](apps/order-ingestion-api/) | External-facing API for creating orders and receiving approval webhooks | 3002 | [README](apps/order-ingestion-api/README.md) |
+| [order-management-api](apps/order-management-api/) | Internal API for operator actions (manual review decisions) | 3004 | [README](apps/order-management-api/README.md) |
+| [web](apps/web/) | Operator dashboard for viewing and managing orders | 3000 | [README](apps/web/README.md) |
+| [workflow-engine](apps/workflow-engine/) | Trigger.dev tasks for the order lifecycle workflow | — | [README](apps/workflow-engine/README.md) |
+| [mock-vendor-api](apps/mock-vendor-api/) | Simulates a vendor dispatch API for testing | 3003 | [README](apps/mock-vendor-api/README.md) |
 
-To build all apps and packages, run the following command:
+## Shared Packages
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+| Package | Description |
+|---------|-------------|
+| `@repo/database` | Prisma schema, client, and shared transition logic |
 
-```sh
-cd my-turborepo
-turbo build
-```
+## Prerequisites
 
-Without global `turbo`, use your package manager:
+- Node.js >= 18
+- Docker (for PostgreSQL)
+- pnpm
+- Trigger.dev account (free tier)
 
-```sh
-cd my-turborepo
-npx turbo build
-pnpm dlx turbo build
-pnpm exec turbo build
-```
+## Quick Start
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+1. **Clone and install:**
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+   ```sh
+   pnpm install
+   ```
 
-```sh
-turbo build --filter=docs
-```
+2. **Start PostgreSQL:**
 
-Without global `turbo`:
+   ```sh
+   docker compose up -d
+   ```
 
-```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
+3. **Run database migrations:**
 
-### Develop
+   ```sh
+   cd packages/database && npx prisma migrate dev
+   ```
 
-To develop all apps and packages, run the following command:
+4. **Set up environment variables:**
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+   Copy `.env.example` to `.env` in each app that has one:
 
-```sh
-cd my-turborepo
-turbo dev
-```
+   ```sh
+   cp apps/order-ingestion-api/.env.example apps/order-ingestion-api/.env
+   cp apps/order-management-api/.env.example apps/order-management-api/.env
+   cp apps/workflow-engine/.env.example apps/workflow-engine/.env
+   cp packages/database/.env.example packages/database/.env
+   ```
 
-Without global `turbo`, use your package manager:
+   Then update the following:
+   - `TRIGGER_SECRET_KEY` — Add your key from the Trigger.dev dashboard to `order-ingestion-api`, `order-management-api`, and `workflow-engine`
+   - `DATABASE_URL` — Should already be set to `postgresql://postgres:postgres@localhost:5432/order_management`
 
-```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
-```
+5. **Start all services:**
 
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+   ```sh
+   pnpm exec turbo dev
+   ```
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+   This starts all apps including the workflow engine (Trigger.dev CLI).
 
-```sh
-turbo dev --filter=web
-```
+## Testing the Full Workflow
 
-Without global `turbo`:
+### Postman Collection
 
-```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
+Import `apps/order-ingestion-api/postman/order-ingestion-api.postman_collection.json` into Postman for pre-configured API requests.
 
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+### 1. Create an order
 
 ```sh
-cd my-turborepo
-turbo login
+curl -X POST http://localhost:3002/orders \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer test-token" \
+  -d '{
+    "ticketId": "TKT-001",
+    "siteAddress": "123 Main St, Springfield, IL 62704",
+    "scheduledDateTime": "2026-05-01T10:00:00Z",
+    "dispatchType": "New Install"
+  }'
 ```
 
-Without global `turbo`, use your package manager:
+### 2. Approve the order
 
 ```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
+curl -X POST http://localhost:3002/webhooks/approval \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer test-token" \
+  -d '{"orderId": "<orderId>", "vendorName": "Acme Field Services"}'
 ```
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+### 3. Watch the workflow
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+After approval, the workflow automatically:
+- Calls the vendor API to get a VON (Vendor Order Number)
+- Polls every 30s for technician assignment
+- Transitions to `CONFIRMED` when a tech is assigned
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+### 4. Close out the order
+
+Open `http://localhost:3000`, click on the order, fill in closeout notes, and submit.
+
+### 5. Test manual review
+
+Stop the mock vendor API, create and approve a new order. After vendor API retries are exhausted, the order enters `MANUAL_REVIEW`. Use the review form in the web UI to retry, reassign to a different vendor, or cancel.
+
+## Order Lifecycle
+
+```
+PENDING_APPROVAL → REQUEST_SENT → CONFIRMED → COMPLETED
+       ↓               ↓              ↓
+    CANCELED     MANUAL_REVIEW     CANCELED
+       ↓          ↓        ↓
+    FAILED    REQUEST_SENT  CANCELED
+```
+
+## Database
+
+View and edit data directly:
 
 ```sh
-turbo link
+cd packages/database && npx prisma studio
 ```
 
-Without global `turbo`:
+Reset the database:
 
 ```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
+docker compose down -v && docker compose up -d
+cd packages/database && npx prisma migrate dev
 ```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)

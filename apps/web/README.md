@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/create-next-app).
+# Order Management Web UI
 
-## Getting Started
+Operator dashboard for viewing and managing dispatch orders. Built with Next.js, Tailwind CSS, and shadcn/ui.
 
-First, run the development server:
+## Setup
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+See the [project README](../../README.md#quick-start) for full setup instructions.
+
+The app runs on `http://localhost:3000`.
+
+## Views
+
+### List View (`/`)
+
+- Table of all orders with OrderId, TicketId, SiteAddress, DispatchType, Status, ScheduledDateTime
+- Status displayed as colored badges
+- Filterable by status via dropdown
+- Click a row to navigate to the detail view
+
+### Detail View (`/orders/[id]`)
+
+- All order fields displayed
+- Current status with colored badge
+- Workflow history with timestamps and metadata tags (triggered by, step, VON, retry count, errors)
+- **Manual Review form** (visible when status is `MANUAL_REVIEW`) — retry, reassign to different vendor, or cancel
+- **Closeout form** (visible when status is `CONFIRMED`) — submit closeout notes to complete the order
+- **Cancel button** (visible for non-terminal statuses)
+
+## Server Actions
+
+The web app uses Next.js server actions for mutations:
+
+- `closeoutOrder` — Transitions order to `COMPLETED` with closeout notes
+- `cancelOrder` — Transitions order to `CANCELED`
+- `reviewOrder` — Calls the Order Management API to submit a review decision
+
+Closeout and cancel write directly to the database via `transitionOrder()`. Review decisions go through the management API because they need to complete Trigger.dev wait tokens.
+
+## Environment Variables
+
+| Variable             | Description                                      |
+|----------------------|--------------------------------------------------|
+| `DATABASE_URL`       | PostgreSQL connection string                     |
+| `MANAGEMENT_API_URL` | Order Management API URL (default: http://localhost:3004) |
+
+## Project Structure
+
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load Inter, a custom Google Font.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+app/
+  page.tsx                   # List view (server component)
+  orders/[id]/
+    page.tsx                 # Detail view (server component)
+    actions.ts               # Server actions (closeout, cancel, review)
+components/
+  cancel-button.tsx          # Cancel order button
+  closeout-form.tsx          # Closeout notes form
+  orders-table.tsx           # Orders list table
+  review-form.tsx            # Manual review decision form
+  status-badge.tsx           # Colored status badge
+  status-filter.tsx          # Status dropdown filter
+  ui/                        # shadcn/ui components
+lib/
+  order-utils.ts             # Status colors, formatting, error display
+  utils.ts                   # shadcn utility (cn)
+```
