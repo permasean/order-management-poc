@@ -128,25 +128,31 @@ The following were added beyond the original requirements:
 
 ### Setup
 
-1. **Clone and install:**
+1. **Install pnpm** (if not already installed):
+
+   ```sh
+   npm install -g pnpm@9
+   ```
+
+2. **Install dependencies:**
 
    ```sh
    pnpm install
    ```
 
-2. **Start PostgreSQL:**
+3. **Start PostgreSQL:**
 
    ```sh
    docker compose up -d
    ```
 
-3. **Run database migrations:**
+4. **Run database migrations:**
 
    ```sh
    cd packages/database && npx prisma migrate dev
    ```
 
-4. **Set up environment variables:**
+5. **Set up environment variables:**
 
    Copy `.env.example` to `.env` in each app that has one:
 
@@ -159,9 +165,9 @@ The following were added beyond the original requirements:
 
    Then update the following:
    - `TRIGGER_SECRET_KEY` — Add your key from the Trigger.dev dashboard to `order-ingestion-api`, `order-management-api`, and `workflow-engine`
-   - `DATABASE_URL` — Should already be set to `postgresql://postgres:postgres@localhost:5432/order_management`
+   - `DATABASE_URL` — If local, should be set to `postgresql://postgres:postgres@localhost:5432/order_management`
 
-5. **Run tests:**
+6. **Run tests:**
 
    ```sh
    pnpm test
@@ -169,7 +175,7 @@ The following were added beyond the original requirements:
 
    All tests are unit tests with mocked dependencies — no database or external services required.
 
-6. **Start all services:**
+7. **Start all services:**
 
    ```sh
    pnpm exec turbo dev
