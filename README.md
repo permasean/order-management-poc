@@ -5,19 +5,12 @@ A dispatch order management system built as a Turborepo monorepo. Demonstrates d
 ## Architecture
 
 ```
-┌─────────────────┐     ┌──────────────────────┐     ┌─────────────────┐
-│  External System │────▶│  Order Ingestion API  │────▶│  Trigger.dev    │
-│                  │     │  (Express, port 3002) │     │  Workflow Engine │
-└─────────────────┘     └──────────────────────┘     └────────┬────────┘
-                                                              │
-┌─────────────────┐     ┌──────────────────────┐              │
-│  Web UI          │────▶│  Order Management API │──────────────┘
-│  (Next.js, 3000)│     │  (Express, port 3004) │   (completes wait tokens)
-└─────────────────┘     └──────────────────────┘
-                                                     ┌─────────────────┐
-                                                     │  Mock Vendor API │
-                                                     │  (Express, 3003)│
-                                                     └─────────────────┘
+External System ----> Order Ingestion API (3002) ----> Workflow Engine (Trigger.dev)
+                                                             |
+                                                             |  calls
+                                                             v
+Web UI (3000) ----------> Order Management API (3004)   Mock Vendor API (3003)
+                          (completes wait tokens)
 ```
 
 ### Wait Tokens (Trigger.dev)
