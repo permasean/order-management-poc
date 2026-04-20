@@ -90,7 +90,7 @@ Every step in the order lifecycle has explicit failure handling:
 2. **Max review attempts exceeded** — The vendor API failed, operators retried 3 times through manual review, and it still failed
 3. **Review timeout** — Order entered `MANUAL_REVIEW` but no operator acted within 7 days
 
-## Beyond Scope
+## What Was Added Beyond Scope
 
 The following were added beyond the original requirements:
 
@@ -123,6 +123,7 @@ The following were added beyond the original requirements:
 - Node.js >= 18
 - Docker (for PostgreSQL)
 - pnpm
+- [Trigger.dev](https://trigger.dev) account (free tier) — this POC uses Trigger.dev Cloud for workflow execution. For production, Trigger.dev can be [self-hosted](https://trigger.dev/docs/open-source-self-hosting).
 - Trigger.dev account (free tier)
 
 ### Setup
@@ -228,33 +229,34 @@ Stop the mock vendor API, create and approve a new order. After vendor API retri
 
 ### Included
 
-| Feature | Status |
-|---------|--------|
-| Order Ingestion API (create order, validation, mock auth) | Done |
-| Approval Webhook (status transition, idempotent) | Done |
-| Vendor API Integration (retry with backoff) | Done |
-| Technician Polling (durable, cancel-aware) | Done |
-| Job Closeout (notes, timestamp, status transition) | Done |
-| Manual Review / Exception Queue (retry, reassign, cancel) | Done |
-| Audit Trail (every transition with metadata) | Done |
-| Web UI — List View (table, status badges, filtering) | Done |
-| Web UI — Detail View (all fields, workflow history, metadata tags) | Done |
-| Work Order PDF (on-demand generation, cached) | Done |
-| Orphan Reconciler (safety net for stuck orders) | Done |
-| Failure Handling (comprehensive, documented) | Done |
+- Order Ingestion API (create order, validation, mock auth)
+- Approval Webhook (status transition, idempotent)
+- Vendor API Integration (retry with backoff)
+- Technician Polling (durable, cancel-aware)
+- Job Closeout (notes, timestamp, status transition)
+- Manual Review / Exception Queue (retry, reassign, cancel)
+- Audit Trail (every transition with metadata)
+- Web UI — List View (table, status badges, filtering)
+- Web UI — Detail View (all fields, workflow history, metadata tags)
+- Work Order PDF (on-demand generation, cached)
+- Orphan Reconciler (safety net for stuck orders)
+- Failure Handling (comprehensive, documented)
 
-### Not Yet Implemented
+### To Implement Further
 
-| Feature | Complexity | Approach |
-|---------|-----------|----------|
-| Technician Notification (SMS/email on CONFIRMED) | Low | Add a `fetch` call to SendGrid/Twilio after the CONFIRMED transition in the workflow. Single API call with tech phone/email and order details. |
-| AI-Assisted Closeout Summary | Low-Medium | Vercel AI SDK (`ai` package) for model-agnostic LLM calls. After closeout submission, generate a structured summary (work performed, issues found, materials used). Store on the order, display in detail view. |
-| OpenAPI/Swagger Compliance | Medium | Add `tsoa` or `swagger-jsdoc` to Express apps for auto-generated API specs. Or migrate to NestJS for built-in OpenAPI support. |
-| Real-time Dashboard | Medium-High | Redis pub/sub for event fan-out, tRPC subscriptions with SSE for live updates. Trigger.dev tasks publish to Redis after status changes, web app subscribes. |
-| API Integration Tests | Medium | Supertest for API endpoint testing against a test database (separate Postgres instance or Testcontainers). |
-| End-to-end Tests | Medium | Playwright for UI flows, Trigger.dev test mode for workflow assertions. |
+| Feature | Approach |
+|---------|----------|
+| Technician Notification (SMS/email on CONFIRMED) | Add a `fetch` call to SendGrid/Twilio after the CONFIRMED transition in the workflow. Single API call with tech phone/email and order details. |
+| AI-Assisted Closeout Summary | Vercel AI SDK (`ai` package) for model-agnostic LLM calls. After closeout submission, generate a structured summary (work performed, issues found, materials used). Store on the order, display in detail view. |
+| OpenAPI/Swagger Compliance | Add `tsoa` or `swagger-jsdoc` to Express apps for auto-generated API specs. Or migrate to NestJS for built-in OpenAPI support. |
+| Real-time Dashboard | Redis pub/sub for event fan-out, tRPC subscriptions with SSE for live updates. Trigger.dev tasks publish to Redis after status changes, web app subscribes. |
+| API Integration Tests | Supertest for API endpoint testing against a test database (separate Postgres instance or Testcontainers). |
+| End-to-end Tests | Playwright for UI flows, Trigger.dev test mode for workflow assertions. |
 
 ## Production Considerations
+
+These are several core considerations, not an exhaustive list.
+
 
 ### Self-Hosted Deployment
 
