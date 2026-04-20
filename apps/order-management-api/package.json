@@ -1,0 +1,25 @@
+{
+	"name": "order-management-api",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"dev": "npx tsx watch src/server.ts",
+		"build": "tsc",
+		"start": "node dist/server.js",
+		"lint": "eslint --max-warnings 0"
+	},
+	"dependencies": {
+		"@repo/database": "workspace:*",
+		"@trigger.dev/sdk": "^4.4.4",
+		"dotenv": "^16.5.0",
+		"express": "^5.1.0",
+		"zod": "^3.25.76"
+	},
+	"devDependencies": {
+		"@types/express": "^5.0.3",
+		"@types/express-serve-static-core": "^5.1.1",
+		"@types/node": "^22.15.18",
+		"tsx": "^4.19.4",
+		"typescript": "^5.9.2"
+	}
+}
