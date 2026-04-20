@@ -1,8 +1,11 @@
 "use server";
 
+import fs from "fs/promises";
+import path from "path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { OrderStatus, transitionOrder } from "@repo/database";
+import { prisma, OrderStatus, transitionOrder } from "@repo/database";
+import { generateWorkOrderPdf } from "@/lib/generate-work-order";
 
 export async function closeoutOrder(orderId: string, closeoutNotes: string) {
 	await transitionOrder(orderId, OrderStatus.COMPLETED, {
@@ -24,6 +27,30 @@ export async function cancelOrder(orderId: string) {
 
 	revalidatePath(`/orders/${orderId}`);
 	revalidatePath("/");
+}
+
+const STORAGE_DIR = path.join(process.cwd(), "storage", "work-orders");
+
+export async function downloadWorkOrderPdf(orderId: string): Promise<string> {
+	const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+
+	if (order.workOrderPdfPath) {
+		const buffer = await fs.readFile(order.workOrderPdfPath);
+		return buffer.toString("base64");
+	}
+
+	const pdfBuffer = await generateWorkOrderPdf(order);
+
+	await fs.mkdir(STORAGE_DIR, { recursive: true });
+	const filePath = path.join(STORAGE_DIR, `${orderId}.pdf`);
+	await fs.writeFile(filePath, pdfBuffer);
+
+	await prisma.order.update({
+		where: { id: orderId },
+		data: { workOrderPdfPath: filePath },
+	});
+
+	return pdfBuffer.toString("base64");
 }
 
 const MANAGEMENT_API_URL = process.env.MANAGEMENT_API_URL ?? "http://localhost:3004";

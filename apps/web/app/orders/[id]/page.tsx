@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { CloseoutForm } from "@/components/closeout-form";
 import { CancelButton } from "@/components/cancel-button";
 import { ReviewForm } from "@/components/review-form";
+import { WorkOrderDownload } from "@/components/work-order-download";
 import { formatDateTime, formatError, formatStatus, isTerminalStatus } from "@/lib/order-utils";
 
 export default async function OrderDetailPage({
@@ -43,7 +44,10 @@ export default async function OrderDetailPage({
 				<CardHeader>
 					<div className="flex items-center justify-between">
 						<CardTitle>Order — {order.ticketId}</CardTitle>
-						<StatusBadge status={order.status} />
+						<div className="flex items-center gap-2">
+							{order.techFirstName && <WorkOrderDownload orderId={order.id} />}
+							<StatusBadge status={order.status} />
+						</div>
 					</div>
 				</CardHeader>
 				<CardContent>

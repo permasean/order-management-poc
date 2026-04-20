@@ -27,6 +27,9 @@ out/
 build
 dist
 
+# Local storage
+storage/
+
 
 # Debug
 npm-debug.log*
