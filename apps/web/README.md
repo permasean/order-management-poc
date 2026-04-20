@@ -24,6 +24,7 @@ The app runs on `http://localhost:3000`.
 - Workflow history with timestamps and metadata tags (triggered by, step, VON, retry count, errors)
 - **Manual Review form** (visible when status is `MANUAL_REVIEW`) — retry, reassign to different vendor, or cancel
 - **Closeout form** (visible when status is `CONFIRMED`) — submit closeout notes to complete the order
+- **Work Order PDF download** (visible when technician is assigned) — generates and caches a PDF with order details and tech info
 - **Cancel button** (visible for non-terminal statuses)
 
 ## Server Actions
@@ -33,6 +34,7 @@ The web app uses Next.js server actions for mutations:
 - `closeoutOrder` — Transitions order to `COMPLETED` with closeout notes
 - `cancelOrder` — Transitions order to `CANCELED`
 - `reviewOrder` — Calls the Order Management API to submit a review decision
+- `downloadWorkOrderPdf` — Generates PDF on first request, caches to local storage, returns base64 for download
 
 Closeout and cancel write directly to the database via `transitionOrder()`. Review decisions go through the management API because they need to complete Trigger.dev wait tokens.
 
@@ -58,8 +60,12 @@ components/
   review-form.tsx            # Manual review decision form
   status-badge.tsx           # Colored status badge
   status-filter.tsx          # Status dropdown filter
+  work-order-download.tsx    # Work order PDF download button
   ui/                        # shadcn/ui components
 lib/
+  generate-work-order.ts     # PDF generation with pdfkit
   order-utils.ts             # Status colors, formatting, error display
   utils.ts                   # shadcn utility (cn)
+storage/
+  work-orders/               # Generated PDFs (gitignored)
 ```
