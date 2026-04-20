@@ -214,12 +214,21 @@ export const orderLifecycle = task({
 	onFailure: async ({ payload, error }) => {
 		logger.error(`Workflow failed for order ${payload.orderId}`, { error });
 
+		const errorStr = String(error);
+		const userFacingError = errorStr.includes("APPROVAL_TIMEOUT")
+			? "Approval timed out"
+			: errorStr.includes("MAX_REVIEW_ATTEMPTS")
+				? "Maximum review attempts exceeded"
+				: errorStr.includes("REVIEW_TIMEOUT")
+					? "Manual review timed out"
+					: "Workflow failed";
+
 		try {
 			await transitionOrder(payload.orderId, OrderStatus.FAILED, {
 				metadata: {
 					triggeredBy: "workflow-engine",
 					step: "onFailure",
-					error: String(error),
+					error: userFacingError,
 				},
 			});
 		} catch {

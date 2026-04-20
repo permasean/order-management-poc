@@ -21,6 +21,15 @@ export function isTerminalStatus(status: OrderStatus): boolean {
 	return (["COMPLETED", "CANCELED", "FAILED"] as string[]).includes(status);
 }
 
+export function formatError(error: string): string {
+	if (error.includes("VENDOR_API_FAILED")) return "Vendor API call failed after retries";
+	if (error.includes("POLLING_EXCEEDED")) return "Tech assignment polling exceeded maximum attempts";
+	if (error.includes("APPROVAL_TIMEOUT")) return "Approval timed out";
+	if (error.includes("MAX_REVIEW_ATTEMPTS")) return "Maximum review attempts exceeded";
+	if (error.includes("REVIEW_TIMEOUT")) return "Manual review timed out";
+	return "Workflow error";
+}
+
 export function formatDateTime(date: Date | string): string {
 	return new Date(date).toLocaleString("en-US", {
 		month: "short",
