@@ -1,11 +1,11 @@
 export const WORKFLOW_CONFIG = {
 	approval: {
-		tokenKey: (orderId: string) => `approval:${orderId}`,
-		timeout: "10m" as const,
+		signalName: "approval",
+		timeoutMs: 10 * 60 * 1000,
 	},
 	manualReview: {
-		tokenKey: (orderId: string, attempt: number) => `manual-review:${orderId}:${attempt}`,
-		timeout: "7d" as const,
+		signalName: "manual-review",
+		timeoutMs: 7 * 24 * 60 * 60 * 1000,
 		maxAttempts: 3,
 	},
 	vendorApi: {
@@ -17,9 +17,14 @@ export const WORKFLOW_CONFIG = {
 		maxPolls: 3,
 	},
 	lifecycle: {
-		idempotencyKey: (orderId: string) => `order-lifecycle:${orderId}`,
-		idempotencyKeyTTL: "24h" as const,
-		maxDuration: 86400,
+		taskQueue: "order-lifecycle",
+		workflowId: (orderId: string) => `order-lifecycle:${orderId}`,
+		workflowExecutionTimeout: "24h",
 		concurrencyLimit: 10,
+	},
+	reconciler: {
+		scheduleId: "orphan-reconciler",
+		cron: "*/5 * * * *",
+		staleThresholdMinutes: 5,
 	},
 };

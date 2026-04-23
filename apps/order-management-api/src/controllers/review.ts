@@ -1,9 +1,21 @@
 import type { Request, Response } from "express";
+import { Connection, Client } from "@temporalio/client";
 import { prisma, OrderStatus } from "@repo/database";
 import { WORKFLOW_CONFIG } from "@repo/config";
-import { wait } from "@trigger.dev/sdk/v3";
 import { reviewSchema } from "../validation/reviewSchema.js";
 import { AppError } from "../middleware/errorHandler.js";
+
+const TEMPORAL_ADDRESS = process.env.TEMPORAL_ADDRESS ?? "localhost:7233";
+
+let client: Client;
+
+async function getClient() {
+	if (!client) {
+		const connection = await Connection.connect({ address: TEMPORAL_ADDRESS });
+		client = new Client({ connection });
+	}
+	return client;
+}
 
 export async function submitReviewDecision(req: Request, res: Response) {
 	const id = req.params.id as string;
@@ -23,17 +35,16 @@ export async function submitReviewDecision(req: Request, res: Response) {
 	}
 
 	try {
-		const token = await wait.createToken({
-			idempotencyKey: WORKFLOW_CONFIG.manualReview.tokenKey(id, order.manualReviewAttempts),
-		});
-		await wait.completeToken(token.id, result.data);
+		const temporal = await getClient();
+		const handle = temporal.workflow.getHandle(WORKFLOW_CONFIG.lifecycle.workflowId(id));
+		await handle.signal("manual-review", result.data);
 	} catch (error) {
 		const errorStr = String(error);
-		if (errorStr.includes("already completed") || errorStr.includes("already resolved")) {
+		if (errorStr.includes("not found") || errorStr.includes("NOT_FOUND")) {
 			throw new AppError(409, "Review decision already submitted");
 		}
-		console.error("Failed to complete token:", error);
-		throw new AppError(500, "Failed to complete review token");
+		console.error("Failed to signal workflow:", error);
+		throw new AppError(500, "Failed to submit review decision");
 	}
 
 	res.json({ message: "Review decision submitted", orderId: id, action: result.data.action });

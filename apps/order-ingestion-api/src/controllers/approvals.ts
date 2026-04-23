@@ -1,8 +1,20 @@
 import type { Request, Response } from "express";
+import { Connection, Client } from "@temporalio/client";
 import { prisma, OrderStatus } from "@repo/database";
 import { WORKFLOW_CONFIG } from "@repo/config";
-import { wait } from "@trigger.dev/sdk/v3";
 import { approvalSchema } from "../validation/approvalSchema.js";
+
+const TEMPORAL_ADDRESS = process.env.TEMPORAL_ADDRESS ?? "localhost:7233";
+
+let client: Client;
+
+async function getClient() {
+	if (!client) {
+		const connection = await Connection.connect({ address: TEMPORAL_ADDRESS });
+		client = new Client({ connection });
+	}
+	return client;
+}
 
 export async function approveOrder(req: Request, res: Response) {
 	const result = approvalSchema.safeParse(req.body);
@@ -36,11 +48,9 @@ export async function approveOrder(req: Request, res: Response) {
 		return;
 	}
 
-	const token = await wait.createToken({
-		idempotencyKey: WORKFLOW_CONFIG.approval.tokenKey(orderId),
-	});
-
-	await wait.completeToken(token.id, { vendorName });
+	const temporal = await getClient();
+	const handle = temporal.workflow.getHandle(WORKFLOW_CONFIG.lifecycle.workflowId(orderId));
+	await handle.signal("approval", { vendorName });
 
 	res.status(200).json({ orderId: order.id, status: "REQUEST_SENT" });
 }

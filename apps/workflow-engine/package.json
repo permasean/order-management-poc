@@ -4,16 +4,20 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "npx trigger.dev@latest dev",
-    "deploy": "npx trigger.dev@latest deploy"
+    "dev": "tsx watch src/worker.ts",
+    "setup-schedules": "tsx src/setup-schedules.ts"
   },
   "dependencies": {
     "@repo/config": "workspace:^",
     "@repo/database": "workspace:*",
-    "@trigger.dev/sdk": "4.4.4"
+    "@temporalio/activity": "^1.16.1",
+    "@temporalio/client": "^1.16.1",
+    "@temporalio/worker": "^1.16.1",
+    "@temporalio/workflow": "^1.16.1"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
+    "tsx": "^4.19.4",
     "typescript": "5.9.2"
   }
 }
