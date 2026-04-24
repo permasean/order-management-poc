@@ -1,6 +1,6 @@
 # Order Management API
 
-Internal API for operator actions on dispatch orders. Handles manual review decisions by completing Trigger.dev wait tokens. Built with Express.
+Internal API for operator actions on dispatch orders. Handles manual review decisions by sending Temporal signals to resume paused workflows. Built with Express.
 
 ## Setup
 
@@ -21,7 +21,7 @@ Health check.
 
 ### `POST /orders/:id/review`
 
-Submit a manual review decision for an order in `MANUAL_REVIEW` status. Completes the Trigger.dev wait token, resuming the workflow.
+Submit a manual review decision for an order in `MANUAL_REVIEW` status. Sends a signal to the Temporal workflow, resuming it.
 
 **Request body:**
 
@@ -51,7 +51,7 @@ Submit a manual review decision for an order in `MANUAL_REVIEW` status. Complete
 |--------------------|--------------------------------------|
 | `PORT`             | Server port (default: 3004)          |
 | `DATABASE_URL`     | PostgreSQL connection string         |
-| `TRIGGER_SECRET_KEY` | Trigger.dev API key for completing wait tokens |
+| `TEMPORAL_ADDRESS` | Temporal server address (default: localhost:7233) |
 
 ## Project Structure
 
@@ -60,7 +60,7 @@ src/
   server.ts                    # Entry point (loads dotenv)
   app.ts                       # Express app setup
   routes/review.ts             # Review decision route
-  controllers/review.ts        # Review decision logic + token completion
+  controllers/review.ts        # Review decision logic + workflow signaling
   validation/reviewSchema.ts   # Zod schema for review input
   middleware/errorHandler.ts    # Centralized error handler
 ```

@@ -36,7 +36,7 @@ The web app uses Next.js server actions for mutations:
 - `reviewOrder` — Calls the Order Management API to submit a review decision
 - `downloadWorkOrderPdf` — Generates PDF on first request, caches to local storage, returns base64 for download
 
-Closeout and cancel write directly to the database via `transitionOrder()`. Review decisions go through the management API because they need to complete Trigger.dev wait tokens.
+Closeout and cancel write directly to the database via `transitionOrder()`. Review decisions go through the management API because they need to signal the Temporal workflow.
 
 ## Environment Variables
 
